@@ -3,4 +3,5 @@ aiosqlite
 httpx
 qrcode[pil]
 Pillow
-aiohttp
+Flask
+gunicorn
