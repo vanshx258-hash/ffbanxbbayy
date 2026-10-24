@@ -25,14 +25,10 @@ PORT = int(os.environ.get("PORT", 10000))
 
 BAN_API_BASE = "https://jexarcodexacstoban.vercel.app/close?access_token="
 API_KEY = "ANIXH"
-DEVELOPER_USERNAME = "𝐒𝐘𝐍𝐓𝐇𝐗_𝐄𝐑𝐑𝐎𝐑𝐑"
+DEVELOPER_USERNAME = "SYNTHX_ERRORR"
 DEVELOPER_LINK = "https://t.me/SYNTHX_ERRORR"
 
 DB_PATH = "bot_data.db"
-
-# Agar Telegram official color support de de, toh isko True kar dena
-# Abhi yeh False rahega warna bot crash hoga
-ENABLE_NATIVE_COLORS = False 
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -61,20 +57,14 @@ def st(text: str) -> str:
         else: out.append(ch)
     return "".join(out)
 
-# ================== BUTTON STYLES ==================
-def btn(text, callback_data=None, url=None, is_danger=False, is_owner=False):
-    """Helper function to create buttons with Green/Red unicode styling"""
-    prefix = "🔴 " if is_danger else ("🟢 " if not is_owner else "👑 ")
-    styled_text = prefix + st(text)
-    
+# ================== BUTTON HELPERS (No Emojis) ==================
+def btn(text, callback_data=None, url=None):
     if url:
-        return InlineKeyboardButton(styled_text, url=url)
-    return InlineKeyboardButton(styled_text, callback_data=callback_data)
+        return InlineKeyboardButton(st(text), url=url)
+    return InlineKeyboardButton(st(text), callback_data=callback_data)
 
-def r_btn(text, is_owner=False):
-    """Helper for Reply Keyboard buttons"""
-    prefix = "👑 " if is_owner else "🟢 "
-    return KeyboardButton(prefix + st(text))
+def r_btn(text):
+    return KeyboardButton(st(text))
 
 # ================== DATABASE ==================
 def init_db():
@@ -158,13 +148,13 @@ def main_reply_keyboard(uid):
     rows = [[r_btn("BAN ACCOUNT")],
             [r_btn("DEVELOPER"), r_btn("SUPPORT")]]
     if uid == OWNER_ID: 
-        rows.append([r_btn("OWNER PANEL", is_owner=True)])
+        rows.append([r_btn("OWNER PANEL")])
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 def confirm_inline_keyboard():
     return InlineKeyboardMarkup([
-        [btn("YES BAN", callback_data="confirm_ban_yes")], # Green
-        [btn("CANCEL", callback_data="confirm_ban_no", is_danger=True)], # Red
+        [btn("YES BAN", callback_data="confirm_ban_yes")], 
+        [btn("CANCEL", callback_data="confirm_ban_no")], 
     ])
 
 # ================== START ==================
@@ -223,8 +213,8 @@ async def confirm_ban(update, context):
             await query.edit_message_text(st("Payment Required") + f"\n\n{st('Amount')}: {st(str(price))}\n{st('UPI')}: <code>{upi_id}</code>\n{st('Holder')}: {holder}", parse_mode="HTML")
             await context.bot.send_photo(chat_id=query.message.chat_id, photo=InputFile(qr_bio, filename="qr.png"), caption=st("Scan and pay"))
             kb = InlineKeyboardMarkup([
-                [btn("CONFIRM PAYMENT", callback_data="payment_done")], # Green
-                [btn("CANCEL", callback_data="payment_cancel", is_danger=True)], # Red
+                [btn("CONFIRM PAYMENT", callback_data="payment_done")], 
+                [btn("CANCEL", callback_data="payment_cancel")], 
             ])
             await context.bot.send_message(chat_id=query.message.chat_id, text=st("After paying click below"), reply_markup=kb)
         except Exception as e:
@@ -257,7 +247,7 @@ async def execute_ban(chat_id, uid, context):
         conn.commit(); conn.close()
         user_link = f"tg://user?id={uid}"
         await notify_owner(context, st("Account Banned") + f"\n\n<a href='{user_link}'>{st('User')}</a>\n{st('Game')}: {game_name}\n{st('UID')}: <code>{game_uid}</code>\n{st('Time')}: {now}")
-        kb = InlineKeyboardMarkup([[btn("BAN ANOTHER", callback_data="ban_account_start")]]) # Green
+        kb = InlineKeyboardMarkup([[btn("BAN ANOTHER", callback_data="ban_account_start")]])
         await context.bot.send_message(chat_id=chat_id, text=st("Account Banned") + f"\n\n{st('Name')}: {game_name}\n{st('UID')}: {game_uid}\n\n{st('Developer')}: @{DEVELOPER_USERNAME}", reply_markup=kb, parse_mode="HTML")
     else:
         await context.bot.send_message(chat_id=chat_id, text=st("Ban failed"))
@@ -273,8 +263,8 @@ async def handle_screenshot(update, context):
     photo = update.message.photo[-1]; user = update.effective_user
     context.user_data["awaiting_screenshot"] = False
     kb = InlineKeyboardMarkup([
-        [btn("APPROVE", callback_data=f"approve_{user.id}")], # Green
-        [btn("DISAPPROVE", callback_data=f"reject_{user.id}", is_danger=True)], # Red
+        [btn("APPROVE", callback_data=f"approve_{user.id}")], 
+        [btn("DISAPPROVE", callback_data=f"reject_{user.id}")], 
     ])
     await context.bot.send_photo(chat_id=OWNER_ID, photo=photo.file_id, caption=st("Payment Screenshot") + f"\n{user.first_name} (@{user.username or 'no_user'})\n{st('ID')}: {user.id}", reply_markup=kb)
     await update.message.reply_text(st("Wait for admin review"))
@@ -296,15 +286,16 @@ async def approve_payment(update, context):
 
 # ================== OWNER PANEL ==================
 async def show_owner_panel(chat_id, context, message_id=None):
+    # Saare owner buttons clean green (default) rahenge
     kb = [
-        [btn("TOTAL USERS", callback_data="owner_stats", is_owner=True)],
-        [btn("ALL BANNED IDS", callback_data="owner_all_bans", is_owner=True)],
-        [btn("BAN USER BY ID", callback_data="owner_ban_user", is_owner=True)],
-        [btn("UNBAN USER BY ID", callback_data="owner_unban_user", is_owner=True)],
-        [btn("SET WELCOME IMAGE", callback_data="owner_set_welcome", is_owner=True)],
-        [btn("SET BAN PRICE", callback_data="owner_set_price", is_owner=True)],
-        [btn("SET UPI ID", callback_data="owner_set_upi", is_owner=True)],
-        [btn("SET HOLDER NAME", callback_data="owner_set_holder", is_owner=True)],
+        [btn("TOTAL USERS", callback_data="owner_stats")],
+        [btn("ALL BANNED IDS", callback_data="owner_all_bans")],
+        [btn("BAN USER BY ID", callback_data="owner_ban_user")],
+        [btn("UNBAN USER BY ID", callback_data="owner_unban_user")],
+        [btn("SET WELCOME IMAGE", callback_data="owner_set_welcome")],
+        [btn("SET BAN PRICE", callback_data="owner_set_price")],
+        [btn("SET UPI ID", callback_data="owner_set_upi")],
+        [btn("SET HOLDER NAME", callback_data="owner_set_holder")],
     ]
     text = st("Owner Panel") + f"\n\n{st('Price')}: {get_setting('ban_price', 'Not set')}\n{st('UPI')}: {get_setting('upi_id', 'Not set')}\n{st('Holder')}: {get_setting('holder_name', 'Not set')}"
     markup = InlineKeyboardMarkup(kb)
@@ -373,13 +364,13 @@ async def handle_message(update, context):
     text = msg.text if msg.text else None; photo = msg.photo if msg.photo else None
     if text:
         t = text.strip().lower()
-        if t == st("BAN ACCOUNT").lower() or t == "🟢 " + st("BAN ACCOUNT").lower() or t == "ban account":
+        if t == st("BAN ACCOUNT").lower() or t == "ban account":
             await ban_account_start(update, context); return
-        if t == st("DEVELOPER").lower() or t == "🟢 " + st("DEVELOPER").lower() or t == "developer":
+        if t == st("DEVELOPER").lower() or t == "developer":
             await msg.reply_text(f"{st('Developer')}: @{DEVELOPER_USERNAME}\n{DEVELOPER_LINK}"); return
-        if t == st("SUPPORT").lower() or t == "🟢 " + st("SUPPORT").lower() or t == "support":
+        if t == st("SUPPORT").lower() or t == "support":
             await msg.reply_text(f"{st('Support')}: @{DEVELOPER_USERNAME}\n{DEVELOPER_LINK}"); return
-        if (t == st("OWNER PANEL").lower() or t == "👑 " + st("OWNER PANEL").lower() or t == "owner panel") and uid == OWNER_ID:
+        if (t == st("OWNER PANEL").lower() or t == "owner panel") and uid == OWNER_ID:
             await show_owner_panel(msg.chat_id, context); return
     if uid == OWNER_ID and context.user_data.get("owner_action"):
         action = context.user_data["owner_action"]; context.user_data["owner_action"] = None
